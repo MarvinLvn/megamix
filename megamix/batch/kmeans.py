@@ -19,7 +19,6 @@ def dist_matrix(points,means):
     squared_matrix += XX
     squared_matrix += YY
     np.maximum(squared_matrix, 0, out=squared_matrix)    
-    
     return np.sqrt(squared_matrix, out=squared_matrix)
 
 class Kmeans(BaseMixture):
@@ -191,7 +190,7 @@ class Kmeans(BaseMixture):
             if n_set > 0:
                 self.means[i] = np.asarray(np.sum(sets, axis=0)/n_set)
                 
-            self.log_weights[i] = np.log(n_set + np.finfo(np.float64).eps)
+            self.log_weights[i] = np.log(n_set + np.finfo(np.float32).eps)
     
     def score(self,points,assignements=None):
         """

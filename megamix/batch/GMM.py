@@ -12,7 +12,7 @@ from .base import _spherical_covariance_matrices
 from .initializations import initialize_log_assignements,initialize_mcw
 
 import numpy as np
-from scipy.misc import logsumexp
+from scipy.special import logsumexp
 
 class GaussianMixture(BaseMixture):
     """

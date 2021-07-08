@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.misc import logsumexp
+from scipy.special import logsumexp
 from numpy.testing import assert_almost_equal
 import pytest
 import h5py

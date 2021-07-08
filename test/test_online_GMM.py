@@ -8,7 +8,7 @@ from megamix.online.base import _log_normal_matrix
 from megamix.online import dist_matrix
 from megamix.utils_testing import checking
 
-from scipy.misc import logsumexp
+from scipy.special import logsumexp
 import pytest
 import h5py
 

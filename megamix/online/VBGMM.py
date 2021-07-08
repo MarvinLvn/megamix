@@ -12,7 +12,7 @@ from megamix.batch.initializations import initialization_plus_plus
 from megamix.batch.initializations import initialization_k_means
 
 import numpy as np
-from scipy.misc import logsumexp
+from scipy.special import logsumexp
 import scipy
 
 class VariationalGaussianMixture(BaseMixture):
@@ -532,7 +532,10 @@ class VariationalGaussianMixture(BaseMixture):
          
         # Matrix W
         self._inv_prec = self.cov * self.nu[:,np.newaxis,np.newaxis]
-        self._log_det_inv_prec = np.log(np.linalg.det(self._inv_prec))
+        # Marvin : np.log(np.linalg.det(X)) has been changed to np.linalg.slogdet(X)
+        # as it is numerically more stable !
+        sign, self._log_det_inv_prec = np.linalg.slogdet(self._inv_prec)
+        self._log_det_inv_prec = sign * self._log_det_inv_prec
         if self.n_components != len(self.means) and verbose:
             print('The number of components changed')
         self.n_components = len(self.means)

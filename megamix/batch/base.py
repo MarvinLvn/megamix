@@ -33,11 +33,9 @@ def _full_covariance_matrices(points,means,weights,resp,reg_covar,n_jobs=1):
     nb_points,dim = points.shape
     n_components,_ = means.shape
     
-    covariance = Parallel(n_jobs=n_jobs,backend='threading')(
+    covariance = np.asarray(Parallel(n_jobs=n_jobs,backend='threading')(
             delayed(_full_covariance_matrix)(points,means[i],weights[i],resp[:,i:i+1],
-                   reg_covar) for i in range(n_components))
-    
-    covariance = np.asarray(covariance)
+                   reg_covar) for i in range(n_components)))
     
     return covariance
 
@@ -73,7 +71,8 @@ def _compute_precisions_chol(cov,covariance_type):
                 raise ValueError(str(k) + "-th covariance matrix non positive definite")
             precisions_chol[k] = scipy.linalg.solve_triangular(cov_chol,
                                                                np.eye(n_features),
-                                                               lower=True,check_finite=False).T
+                                                               lower=True, check_finite=False).T
+            # might save precisions_chol[k] on disk
      return precisions_chol
 
 def _log_normal_matrix_core(points,mu,prec_chol):
@@ -94,12 +93,18 @@ def _log_normal_matrix(points,means,cov,covariance_type,n_jobs=1):
     n_components,_ = means.shape
     
     if covariance_type == "full":
-        precisions_chol = _compute_precisions_chol(cov,covariance_type)
-        log_det_chol = np.log(np.linalg.det(precisions_chol))
-        
-        log_prob = Parallel(n_jobs=n_jobs,backend='threading')(
-           delayed(_log_normal_matrix_core)(points,means[k],precisions_chol[k]) for k in range(n_components))
+        precisions_chol = _compute_precisions_chol(cov, covariance_type)
+
+        # Marvin : np.log(np.linalg.det(X)) has been changed to np.linalg.slogdet(X)
+        # as it is numerically more stable !
+        sign, log_det_chol = np.linalg.slogdet(precisions_chol)
+        log_det_chol = sign * log_det_chol
+
+        # may need to read precisions_chol[k] from disk
+        log_prob = Parallel(n_jobs=n_jobs, backend='threading')(
+           delayed(_log_normal_matrix_core)(points, means[k], precisions_chol[k]) for k in range(n_components))
         log_prob = np.asarray(log_prob).T
+
         
     elif covariance_type == "spherical":
         precisions_chol = np.sqrt(np.reciprocal(cov))
@@ -146,6 +151,9 @@ def _log_B(W,nu):
     dim,_ = W.shape
     
     det_W = np.linalg.det(W)
+    print("det of W")
+    print(det_W)
+    print(np.isnan(np.sum(det_W)))
     log_gamma_sum = np.sum(gammaln(.5 * (nu - np.arange(dim)[:, np.newaxis])), 0)
     result = - nu*0.5*np.log(det_W) - nu*dim*0.5*np.log(2)
     result += -dim*(dim-1)*0.25*np.log(np.pi) - log_gamma_sum
@@ -250,7 +258,7 @@ class BaseMixture():
         
         #Checking prior mean
         if self._means_prior is None:
-            self._means_prior = np.mean(points,axis=0)
+            self._means_prior = np.mean(points, axis=0)
         elif len(self._means_prior) != dim:
             raise ValueError("the mean prior must have the same dimension as "
                              "the points : %s."
@@ -278,8 +286,6 @@ class BaseMixture():
         problem
         
         """
-        
-        
         if len(points.shape) == 1:
             points=points.reshape(1,len(points))
             
@@ -389,7 +395,7 @@ class BaseMixture():
         None
         
         """
-        
+        print("Initializing ...")
         early_stopping = points_test is not None
             
         resume_iter = True
@@ -421,8 +427,11 @@ class BaseMixture():
             grp = file.create_group('init')
             self.write(grp)
             file.close()
-        
+
+        print("Start expectation-maximization algorithm")
+        iter_times = []
         while resume_iter:
+            start = time.time()
             #EM algorithm
             log_prob_norm_data,log_resp_data = self._step_E(points_data)
             if early_stopping:
@@ -480,11 +489,19 @@ class BaseMixture():
                 grp = f.create_group('iter' + str(self.iter))
                 self.write(grp)
                 f.close()
-        
+
+            end = time.time()
+            iter_time = end - start
+            iter_times.append(iter_time)
+            print("Iteration %d took %.2f seconds." % (iter_algo, iter_time))
             iter_algo += 1
         
         print("Number of iterations :", self.iter)
-    
+        print("Took %.2f seconds in total which is equivalent to %.2f hours" % (
+        np.sum(iter_times), np.sum(iter_times) / 3600))
+        print("Average duration of an iteration : %.2f seconds" % (np.mean(iter_times)))
+
+
     def predict_log_resp(self,points):
         """
         This function returns the logarithm of each point's responsibilities
@@ -578,8 +595,8 @@ class BaseMixture():
             A group of a hdf5 file in reading mode
             
         """
-        self.means = np.asarray(group['means'].value)
-        self.log_weights = np.asarray(group['log_weights'].value)
+        self.means = group['means'][:]
+        self.log_weights = group['log_weights'][:]
         self.iter = group.attrs['iter']
 
         n_components = len(self.means)
@@ -594,7 +611,7 @@ class BaseMixture():
         
         if self.name in ['GMM','VBGMM','DPGMM']:
             try:
-                self.cov = np.asarray(group['cov'].value)
+                self.cov = group['cov'][:]
             except KeyError:
                 warnings.warn('You are reading a model with no prior '
                               'parameters. They will be initialized '
@@ -603,20 +620,18 @@ class BaseMixture():
         
         if self.name in ['VBGMM','DPGMM']:
             try:
-                initial_parameters = group['initial parameters'].value
+                initial_parameters = group['initial parameters'][:]
                 self.alpha_0 = initial_parameters[0]
                 self.beta_0 = initial_parameters[1]
                 self.nu_0 = initial_parameters[2]
-                self._means_prior = np.asarray(group['means prior'].value)
-                self._inv_prec_prior = np.asarray(group['inv prec prior'].value)
+                self._means_prior = group['means prior'][:]
+                self._inv_prec_prior = group['inv prec prior'][:]
             except KeyError:
                 warnings.warn('You are reading a model with no prior '
                               'parameters. They will be initialized '
                               'if not already given during __init__')
-            
         self._initialize(points)
-        
-        
+
     def simplified_model(self,points):
         """
         A method creating a new model with simplified parameters: clusters unused

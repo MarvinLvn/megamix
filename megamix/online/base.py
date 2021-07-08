@@ -327,6 +327,7 @@ class BaseMixture():
         None
         
         """
+        print("Initializing ...")
         # Early stopping preparation
         test_exists = points_test is not None
         if test_exists:
@@ -340,14 +341,20 @@ class BaseMixture():
             raise ValueError('The system has to be initialized.')
         
         condition = _check_saving(saving,saving_iter)            
-        
-        n_points,dim = points_data.shape
-		
+
+        n_points, dim = points_data.shape
+        print("Start online expectation-maximization algorithm")
+        iter_times = []
         for i in range(n_points//self.window):
+            start = time.time()
             point = points_data[i*self.window:(i+1)*self.window:]
-            _,log_resp = self._step_E(point)
+            _, log_resp = self._step_E(point)
             self._sufficient_statistics(point,log_resp)
             self._step_M()
+            end = time.time()
+            iter_time = end-start
+            iter_times.append(iter_time)
+            print("Online iteration %d took %.2f seconds." % (self.iter, iter_time))
             self.iter += self.window
             
             # Checking early stopping
@@ -366,7 +373,9 @@ class BaseMixture():
                 grp = f.create_group('iter' + str(self.iter))
                 self.write(grp)
                 f.close()
-    
+            print("Took %.2f seconds in total which is equivalent to %.2f hours" % (np.sum(iter_times), np.sum(iter_times)/3600))
+            print("Average duration of an iteration : %.2f seconds" % (np.mean(iter_times)))
+
     def predict_log_resp(self,points):
         """
         This function returns the logarithm of each point's responsibilities
@@ -433,24 +442,24 @@ class BaseMixture():
             A group of a hdf5 file in reading mode
 
         """
-        group.create_dataset('means',self.means.shape,dtype='float64')
+        group.create_dataset('means',self.means.shape,dtype='float32')
         group['means'][...] = self.means
-        group.create_dataset('log_weights',self.log_weights.shape,dtype='float64')
+        group.create_dataset('log_weights',self.log_weights.shape,dtype='float32')
         group['log_weights'][...] = self.log_weights
         group.attrs['iter'] = self.iter
         group.attrs['time'] = time.time()
 		
         if self.name in ['GMM','VBGMM','DPGMM']:
-            group.create_dataset('cov',self.cov.shape,dtype='float64')
+            group.create_dataset('cov',self.cov.shape,dtype='float32')
             group['cov'][...] = self.cov
             
         if self.name in ['VBGMM','DPGMM']:
             initial_parameters = np.asarray([self.alpha_0,self.beta_0,self.nu_0])
-            group.create_dataset('initial parameters',initial_parameters.shape,dtype='float64')
+            group.create_dataset('initial parameters',initial_parameters.shape,dtype='float32')
             group['initial parameters'][...] = initial_parameters
-            group.create_dataset('means prior',self._means_prior.shape,dtype='float64')
+            group.create_dataset('means prior',self._means_prior.shape,dtype='float32')
             group['means prior'][...] = self._means_prior
-            group.create_dataset('inv prec prior',self._inv_prec_prior.shape,dtype='float64')
+            group.create_dataset('inv prec prior',self._inv_prec_prior.shape,dtype='float32')
             group['inv prec prior'][...] = self._inv_prec_prior
 
     
@@ -465,8 +474,8 @@ class BaseMixture():
             
         """
         self.init = 'read'
-        self.means = np.asarray(group['means'].value)
-        self.log_weights = np.asarray(group['log_weights'].value)
+        self.means = group['means'][:]
+        self.log_weights = group['log_weights'][:]
         self.iter = group.attrs['iter']
         
         n_components = len(self.means)
@@ -477,7 +486,7 @@ class BaseMixture():
         
         if self.name in ['GMM','VBGMM','DPGMM']:
             try:
-                self.cov = np.asarray(group['cov'].value)
+                self.cov = group['cov'][:]
             except KeyError:
                 warnings.warn('You are reading a model with no covariance.'
                               'They will be initialized.')
@@ -486,12 +495,12 @@ class BaseMixture():
         
         if self.name in ['VBGMM','DPGMM']:
             try:
-                initial_parameters = group['initial parameters'].value
+                initial_parameters = group['initial parameters'][:]
                 self.alpha_0 = initial_parameters[0]
                 self.beta_0 = initial_parameters[1]
                 self.nu_0 = initial_parameters[2]
-                self._means_prior = np.asarray(group['means prior'].value)
-                self._inv_prec_prior = np.asarray(group['inv prec prior'].value)
+                self._means_prior = group['means prior'][:]
+                self._inv_prec_prior = group['inv prec prior'][:]
             except KeyError:
                 warnings.warn('You are reading a model with no prior '
                               'parameters. They will be initialized '

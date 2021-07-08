@@ -13,7 +13,7 @@ from megamix.batch.initializations import initialization_plus_plus, initializati
 from .kmeans import dist_matrix
 
 import numpy as np
-from scipy.misc import logsumexp
+from scipy.special import logsumexp
 import scipy
 
 
@@ -148,7 +148,7 @@ class GaussianMixture(BaseMixture):
         log_prob_norm = logsumexp(log_prob, axis=1)
         log_resp = log_prob - log_prob_norm[:,np.newaxis]
         
-        self.log_weights = logsumexp(log_resp,axis=0) - np.log(n_points)
+        self.log_weights = logsumexp(log_resp, axis=0) - np.log(n_points)
         
         
     def initialize(self,points,init_choice='plus',n_init=1):
