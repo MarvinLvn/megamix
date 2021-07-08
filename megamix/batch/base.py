@@ -564,24 +564,24 @@ class BaseMixture():
             A group of a hdf5 file in reading mode
 
         """
-        group.create_dataset('means',self.means.shape,dtype='float64')
+        group.create_dataset('means',self.means.shape,dtype='float32')
         group['means'][...] = self.means
-        group.create_dataset('log_weights',self.log_weights.shape,dtype='float64')
+        group.create_dataset('log_weights',self.log_weights.shape,dtype='float32')
         group['log_weights'][...] = self.log_weights
         group.attrs['iter'] = self.iter
         group.attrs['time'] = time.time()
         
         if self.name in ['GMM','VBGMM','DPGMM']:
-            group.create_dataset('cov',self.cov.shape,dtype='float64')
+            group.create_dataset('cov',self.cov.shape,dtype='float32')
             group['cov'][...] = self.cov
         
         if self.name in ['VBGMM','DPGMM']:
             initial_parameters = np.asarray([self.alpha_0,self.beta_0,self.nu_0])
-            group.create_dataset('initial parameters',initial_parameters.shape,dtype='float64')
+            group.create_dataset('initial parameters',initial_parameters.shape,dtype='float32')
             group['initial parameters'][...] = initial_parameters
-            group.create_dataset('means prior',self._means_prior.shape,dtype='float64')
+            group.create_dataset('means prior',self._means_prior.shape,dtype='float32')
             group['means prior'][...] = self._means_prior
-            group.create_dataset('inv prec prior',self._inv_prec_prior.shape,dtype='float64')
+            group.create_dataset('inv prec prior',self._inv_prec_prior.shape,dtype='float32')
             group['inv prec prior'][...] = self._inv_prec_prior
 
     
