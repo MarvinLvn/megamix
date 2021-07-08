@@ -372,8 +372,11 @@ class VariationalGaussianMixture(BaseMixture):
         # Covariance update
         if self.covariance_type=="full":
             self._estimate_wishart_full(N,X_barre,S)
-            det_inv_prec = np.linalg.det(self._inv_prec)
-            self._log_det_inv_prec = np.log(det_inv_prec)
+            # Marvin : np.log(np.linalg.det(X)) has been changed to np.linalg.slogdet(X)
+            # as it is numerically more stable !
+            sign, log_det_inv_prec = np.linalg.slogdet(self._inv_prec)
+            log_det_inv_prec = sign * log_det_inv_prec
+            self._log_det_inv_prec = log_det_inv_prec
             self.cov = self._inv_prec / self.nu[:,np.newaxis,np.newaxis]
             
         elif self.covariance_type=="spherical":

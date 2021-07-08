@@ -138,10 +138,12 @@ def _log_B(W,nu):
     """
     
     dim,_ = W.shape
-    
-    det_W = np.linalg.det(W)
+    # Marvin : np.log(np.linalg.det(X)) has been changed to np.linalg.slogdet(X)
+    # as it is numerically more stable !
+    sign, log_det_W = np.linalg.slogdet(W)
+    log_det_W = sign * log_det_W
     log_gamma_sum = np.sum(gammaln(.5 * (nu - np.arange(dim)[:, np.newaxis])), 0)
-    result = - nu*0.5*np.log(det_W) - nu*dim*0.5*np.log(2)
+    result = - nu*0.5*log_det_W - nu*dim*0.5*np.log(2)
     result += -dim*(dim-1)*0.25*np.log(np.pi) - log_gamma_sum
     return result
 

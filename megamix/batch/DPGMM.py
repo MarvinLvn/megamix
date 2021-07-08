@@ -364,9 +364,12 @@ class DPVariationalGaussianMixture(BaseMixture):
             diff = X_barre[i] - self._means_prior
             product = self.beta_0 * N[i]/self.beta[i] * np.outer(diff,diff)
             self._inv_prec[i] = self._inv_prec_prior + N[i] * S[i] + product
-            
-            det_inv_prec = np.linalg.det(self._inv_prec[i])
-            self._log_det_inv_prec[i] = np.log(det_inv_prec)
+
+            # Marvin : np.log(np.linalg.det(X)) has been changed to np.linalg.slogdet(X)
+            # as it is numerically more stable !
+            sign, log_det_inv_prec = np.linalg.slogdet(self._inv_prec[i])
+            log_det_inv_prec = sign * log_det_inv_prec
+            self._log_det_inv_prec[i] = log_det_inv_prec
             self.cov[i] = self._inv_prec[i] / self.nu[i]
         
     def _convergence_criterion_simplified(self,points,log_resp,log_prob_norm):
