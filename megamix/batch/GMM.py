@@ -193,7 +193,7 @@ class GaussianMixture(BaseMixture):
         
         #Phase 1:
         product = np.dot(assignements.T,points)
-        weights = np.sum(assignements,axis=0) + 10 * np.finfo(assignements.dtype).eps
+        weights = np.sum(assignements, axis=0) + 10 * np.finfo(assignements.dtype).eps
         
         self.means = product / weights[:,np.newaxis]
         

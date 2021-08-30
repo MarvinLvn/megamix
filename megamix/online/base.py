@@ -227,7 +227,7 @@ class BaseMixture():
             self.alpha_0 = 1/self.n_components
         elif self.alpha_0 < 0:
             raise ValueError("alpha_0 must be positive")
-        
+
         #Checking beta_0
         if self.beta_0 is None:
             self.beta_0 = 1.0
@@ -285,8 +285,7 @@ class BaseMixture():
             raise ValueError('The points given must have the same '
                              'dimension as the problem : ' + str(dim_means))
         return points
-    
-	
+
     def fit(self,points_data,points_test=None,saving=None,file_name='model',
             check_convergence_iter=None,saving_iter=2):
         """The EM algorithm
@@ -347,16 +346,12 @@ class BaseMixture():
         n_points, dim = points_data.shape
         print("Start online expectation-maximization algorithm")
         iter_times = []
+        start = time.time()
         for i in range(n_points//self.window):
-            start = time.time()
             point = points_data[i*self.window:(i+1)*self.window:]
             _, log_resp = self._step_E(point)
             self._sufficient_statistics(point,log_resp)
             self._step_M()
-            end = time.time()
-            iter_time = end-start
-            iter_times.append(iter_time)
-            print("Online iteration %d took %.2f seconds." % (self.iter, iter_time))
             self.iter += self.window
             
             # Checking early stopping
@@ -371,12 +366,12 @@ class BaseMixture():
                     break
             
             if condition(i+1):
-                f = h5py.File(file_name + '.h5', 'a')
+                f = h5py.File(file_name + '.h5', 'w')
                 grp = f.create_group('iter' + str(self.iter))
                 self.write(grp)
                 f.close()
-            print("Took %.2f seconds in total which is equivalent to %.2f hours" % (np.sum(iter_times), np.sum(iter_times)/3600))
-            print("Average duration of an iteration : %.2f seconds" % (np.mean(iter_times)))
+        end = time.time()
+        print("Took %.2f seconds in total which is equivalent to %.2f hours" % ((end-start), (end-start)/3600))
 
     def predict_log_resp(self,points):
         """

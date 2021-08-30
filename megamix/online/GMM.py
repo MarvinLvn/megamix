@@ -31,7 +31,7 @@ class GaussianMixture(BaseMixture):
     n_components : int, defaults to 1
         Number of clusters used.
         
-    kappa : double, defaults to 1.0
+    kappa : float, defaults to 1.0
         A coefficient in ]0.0,1.0] which give weight or not to the new points compared
         to the ones already used.
         
@@ -81,7 +81,7 @@ class GaussianMixture(BaseMixture):
     """
 
     def __init__(self, n_components=1,kappa=1.0,reg_covar=1e-6,
-                 window=1,update=None):
+                 window=1,update=None, n_jobs=1):
         
         super(GaussianMixture, self).__init__()
 
@@ -93,7 +93,7 @@ class GaussianMixture(BaseMixture):
         self.window = window
         self.update = update
         self.init = 'usual'
-        
+        self.n_jobs = n_jobs
         self._is_initialized = False
         self.iter = 0
         
@@ -169,9 +169,11 @@ class GaussianMixture(BaseMixture):
             dist_min = np.inf
             for i in range(n_init):
                 if init_choice == 'plus':
-                    means,dist = initialization_plus_plus(self.n_components,points,info=True)
+                    means, dist = initialization_plus_plus(self.n_components,points,info=True)
                 elif init_choice == 'kmeans':
-                    means,_,dist = initialization_k_means(self.n_components,points,info=True)
+                    means, _ , dist = initialization_k_means(self.n_components,points,info=True)
+                else:
+                    raise ValueError("Unknown init_choice : %s " % init_choice)
                     
                 if dist < dist_min:
                     dist_min = dist
@@ -184,7 +186,7 @@ class GaussianMixture(BaseMixture):
         # Computation of self.cov_chol
         self.cov_chol = np.empty(self.cov.shape)
         for i in range(self.n_components):
-            self.cov_chol[i],inf = scipy.linalg.lapack.dpotrf(self.cov[i],lower=True)
+            self.cov_chol[i], inf = scipy.linalg.lapack.dpotrf(self.cov[i],lower=True)
                 
         if self.init in ['usual','read_kmeans']:        
             self._initialize_weights(points)
@@ -199,7 +201,7 @@ class GaussianMixture(BaseMixture):
             if self.covariance_type == 'full':
                 self.S_chol = np.empty(self.S.shape)
                 for i in range(self.n_components):
-                    self.S_chol[i],inf = scipy.linalg.lapack.dpotrf(self.S[i],lower=True)
+                    self.S_chol[i], inf = scipy.linalg.lapack.dpotrf(self.S[i],lower=True)
             elif self.covariance_type == 'spherical':
                 self.S_chol = np.sqrt(self.S)
         
@@ -210,7 +212,7 @@ class GaussianMixture(BaseMixture):
                 self.update = True
             else:
                 self.update = False
-                
+
                 
     def _step_E(self, points):
         """
@@ -258,7 +260,7 @@ class GaussianMixture(BaseMixture):
         else:
             for i in range(self.n_components):
                 self.cov_chol[i],inf = scipy.linalg.lapack.dpotrf(self.cov[i],lower=True)
-        
+
         
     def _sufficient_statistics(self,points,log_resp):
         """
@@ -348,7 +350,7 @@ class GaussianMixture(BaseMixture):
         
         n_points,dim = points.shape
         log_resp = self.predict_log_resp(points)
-        _,n_components = log_resp.shape
+        _, n_components = log_resp.shape
     
         exist = np.zeros(n_components)
         

@@ -41,7 +41,7 @@ class Kmeans(BaseMixture):
         The number of points used at the same time in order to update the
         parameters.
     
-    kappa : double, defaults to 1.0
+    kappa : float, defaults to 1.0
         A coefficient in ]0.0,1.0] which give weight or not to the new points compared
         to the ones already used.
         

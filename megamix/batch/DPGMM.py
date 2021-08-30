@@ -541,5 +541,7 @@ class DPVariationalGaussianMixture(BaseMixture):
         
         params = (log_weights, means, cov,
                   alpha, beta, nu)
-        
+        print(means.shape)
+        print("ok")
+        exit()
         return params

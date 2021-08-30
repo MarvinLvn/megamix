@@ -414,7 +414,7 @@ class BaseMixture():
             patience = 0
 
         #Initialization
-        if not self._is_initialized or self.init!='user':
+        if not self._is_initialized or self.init != 'user':
             self._initialize(points_data,points_test)
             self.iter = 0
             

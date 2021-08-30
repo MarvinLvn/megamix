@@ -4,7 +4,8 @@ shopt -s expand_aliases
 alias stool='/private/home/mriviere/FairInternal/stool/stool.py'
 
 data_path=/private/home/marvinlvn/DATA/CPC_data/train
-languages=(English_LibriVox_extracted_full_random French_LibriVox_extracted_full_random)
+#languages=(English_LibriVox_extracted_full_random French_LibriVox_extracted_full_random)
+languages=(English_LibriVox_extracted_full_random)
 sizes=(8h 16h 32h 64h 128h 256h)
 
 cd ~/megamix

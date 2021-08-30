@@ -58,7 +58,10 @@ def cpc_audio_representations(paths, config):
     output = []
     for cap in paths:
         print("Processing {}".format(cap))
-        features = cpc_feature_extraction(feature_maker_X, cap)[0]
+        features = cpc_feature_extraction(feature_maker_X, cap,
+                                          seq_norm=config['seq_norm'],
+                                          strict=config['strict'],
+                                          max_size_seq=config['max_size_seq'])[0]
         output.append(features)
     return output
 
@@ -99,6 +102,8 @@ def main(argv):
                         help='Type of features that need to be extracted, either mfcc or cpc.')
     parser.add_argument('--cpc_path', type=str, default=None, required=False,
                         help='Path to cpc checkpoint, only used when --type == cpc.')
+    parser.add_argument('--max_size_seq', type=int, default=20480, help='Size of the window to be considered '
+                                                                         '(in number of frames).')
     parser.add_argument('--debug', action='store_true',
                         help='If activated, will consider only first 20 audio files.')
     args = parser.parse_args(argv)
@@ -114,7 +119,7 @@ def main(argv):
     elif args.type == 'cpc':
         assert args.cpc_path is not None
         config = dict(type='cpc', model_path=args.cpc_path,
-                      strict=False, seq_norm=False, max_size_seq=10240,
+                      strict=True, seq_norm=True, max_size_seq=args.max_size_seq,
                       gru_level=0, on_gpu=True)
 
     paths = find_audio_files(args.db, debug=args.debug)
