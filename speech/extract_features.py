@@ -52,10 +52,12 @@ def acoustic_audio_features(paths, config):
     return output
 
 
-def cpc_audio_representations(paths, config):
+def cpc_audio_representations(paths, config, time_step=0.01, max_h=None):
     from speech.utils.audio_features import load_feature_maker_CPC, cpc_feature_extraction
     feature_maker_X = load_feature_maker_CPC(config['model_path'], gru_level=config['gru_level'], on_gpu=config['on_gpu'])
     output = []
+    max_s = max_h*3600 if max_h is not None else None
+    nb_frames = 0
     for cap in paths:
         print("Processing {}".format(cap))
         features = cpc_feature_extraction(feature_maker_X, cap,
@@ -63,22 +65,25 @@ def cpc_audio_representations(paths, config):
                                           strict=config['strict'],
                                           max_size_seq=config['max_size_seq'])[0]
         output.append(features)
+        nb_frames += features.shape[0]
+        if max_s is not None and nb_frames * time_step > max_s:
+            break
     return output
 
 
-def audio_features(paths, config):
+def audio_features(paths, config, time_step=0.01, max_h=40):
     if config['type'] == 'mfcc' or config['type'] == 'fbank':
         return acoustic_audio_features(paths, config)
     elif config['type'] == 'cpc':
-        return cpc_audio_representations(paths, config)
+        return cpc_audio_representations(paths, config, time_step, max_h)
     else:
         raise NotImplementedError("Can't find audio feature extraction of type %s" % config['type'])
 
 
 def save_features(features, paths, out_path):
-    features = dict(features=features, filenames=paths)
-    print("Size of all features : %.2f MB" % sys.getsizeof(features['features']))
-    torch.save(features, out_path)
+    out_dict = dict(features=features, filenames=paths[0:len(features)])
+    print("Size of all features : %.2f MB" % sys.getsizeof(features))
+    torch.save(out_dict, out_path)
 
 
 def find_audio_files(path, extension='.wav', debug=False):
@@ -106,6 +111,9 @@ def main(argv):
                                                                          '(in number of frames).')
     parser.add_argument('--debug', action='store_true',
                         help='If activated, will consider only first 20 audio files.')
+    parser.add_argument('--time_step', type=float, default=0.01, help='Size of the CPC time (default to 10 ms)')
+    parser.add_argument('--max_h', type=int, default=None,
+                        help='Maximum audio duration to extract in (h). Default to None : consider all audios found')
     args = parser.parse_args(argv)
 
     if args.out[-3:] != ".pt":
@@ -123,7 +131,7 @@ def main(argv):
                       gru_level=0, on_gpu=True)
 
     paths = find_audio_files(args.db, debug=args.debug)
-    features = audio_features(paths, config)
+    features = audio_features(paths, config, time_step=args.time_step, max_h=args.max_h)
     save_features(features, paths, args.out)
 
 
