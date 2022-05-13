@@ -20,7 +20,7 @@ for language in ${languages[*]}; do
     in_path=${data_path}/${language}/${size}/${size}_nb_0
     out_path=${data_path}/${language}/cpc_${language}_${size}_nb_0_extracted_on_${language}_${size}_nb_0.pt
 
-    stool run speech/extract_features.py --args="--db ${in_path} --out ${out_path} --type cpc \
+    echo stool run speech/extract_features.py --args="--db ${in_path} --out ${out_path} --type cpc \
       --cpc_path ${CPC_PATH}" \
       --ncpu=10 --ngpu=1 --name=CPC/${language}/${size} --partition=learnlab   --anaconda=/private/home/marvinlvn/.conda/envs/megamix
   done;

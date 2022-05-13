@@ -80,10 +80,16 @@ def audio_features(paths, config, time_step=0.01, max_h=40):
         raise NotImplementedError("Can't find audio feature extraction of type %s" % config['type'])
 
 
-def save_features(features, paths, out_path):
-    out_dict = dict(features=features, filenames=paths[0:len(features)])
-    print("Size of all features : %.2f MB" % sys.getsizeof(features))
-    torch.save(out_dict, out_path)
+def save_features(features, paths, out_path, db, one_per_file=False):
+    if one_per_file:
+        paths = [p.replace(db, out_path) for p in paths]
+        for feat, path in zip(features, paths):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            torch.save(feat, path.replace('.wav', '.pt'))
+    else:
+        out_dict = dict(features=features, filenames=paths[0:len(features)])
+        print("Size of all features : %.2f MB" % sys.getsizeof(features))
+        torch.save(out_dict, out_path)
 
 
 def find_audio_files(path, extension='.wav', debug=False):
@@ -91,7 +97,7 @@ def find_audio_files(path, extension='.wav', debug=False):
     if len(paths) == 0:
         raise ValueError("The folder you provided doesn't contain any %s files" % extension)
     if debug:
-        paths = paths[:50]
+        paths = paths[:5]
     print("Found %d audio files." % len(paths))
     return paths
 
@@ -114,9 +120,11 @@ def main(argv):
     parser.add_argument('--time_step', type=float, default=0.01, help='Size of the CPC time (default to 10 ms)')
     parser.add_argument('--max_h', type=int, default=None,
                         help='Maximum audio duration to extract in (h). Default to None : consider all audios found')
+    parser.add_argument('--one_per_file', action='store_true',
+                        help='If activated, will create one feature file per audio file.')
     args = parser.parse_args(argv)
 
-    if args.out[-3:] != ".pt":
+    if args.out[-3:] != ".pt" and not args.one_per_file:
         raise ValueError("Parameter --out should end with .pt.")
 
     if args.cpc_path is not None and args.cpc_path[-3:] != '.pt':
@@ -132,7 +140,7 @@ def main(argv):
 
     paths = find_audio_files(args.db, debug=args.debug)
     features = audio_features(paths, config, time_step=args.time_step, max_h=args.max_h)
-    save_features(features, paths, args.out)
+    save_features(features, paths, args.out, args.db, args.one_per_file)
 
 
 if __name__ == "__main__":
